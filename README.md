@@ -134,3 +134,81 @@ zone "56.168.192.in-addr.arpa" {
     file "/etc/named/named.dns.lab.rev";
 };
 ```
+Настроим зону **dns.lab** на мастер сервере. Пропишем записи _SOA_ с основными настройками зоны, _NS_ для обоих серверов, а также _A_ записи для всех серверов:
+```bash
+named.dns.lab
+$TTL 3600
+$ORIGIN dns.lab.
+@               IN      SOA     ns01.dns.lab. root.dns.lab. (
+                            2507202401 ; serial
+                            3600       ; refresh (1 hour)
+                            600        ; retry (10 minutes)
+                            86400      ; expire (1 day)
+                            600        ; minimum (10 minutes)
+                        )
+
+                IN      NS      ns01.dns.lab.
+                IN      NS      ns02.dns.lab.
+
+; DNS Servers
+ns01            IN      A       192.168.56.10
+ns02            IN      A       192.168.56.11
+web1            IN      A       192.168.56.15
+web2            IN      A       192.168.56.16
+```
+Аналогично для обратной зоны:
+```
+named.dns.lab.rev
+$TTL 3600
+$ORIGIN 56.168.192.in-addr.arpa.
+56.168.192.in-addr.arpa.  IN      SOA     ns01.dns.lab. root.dns.lab. (
+                            2507202401 ; serial
+                            3600       ; refresh (1 hour)
+                            600        ; retry (10 minutes)
+                            86400      ; expire (1 day)
+                            600        ; minimum (10 minutes)
+                        )
+
+                IN      NS      ns01.dns.lab.
+                IN      NS      ns02.dns.lab.
+
+; DNS Servers
+10              IN      PTR     ns01.dns.lab.
+11              IN      PTR     ns02.dns.lab.
+15              IN      PTR     web1.dns.lab.
+16              IN      PTR     web2.dns.lab.
+```
+Сразу добавим в конфиг файл зону **newdns.lab**, а также файл **named.newdns.lab** с ее описанием. Добавим лве записи **www** для обоих клиентов:
+```bash
+/etc/named.conf
+
+...
+// lab's newdns zone
+zone "newdns.lab" {
+    type master;
+    allow-transfer { key "zonetransfer.key"; };
+    file "/etc/named/named.newdns.lab"
+};
+```
+```bash
+/etc/named/named.newdns.lab
+
+$TTL 3600
+$ORIGIN newdns.lab.
+@               IN      SOA     ns01.dns.lab. root.dns.lab. (
+                            2507202401 ; serial
+                            3600       ; refresh (1 hour)
+                            600        ; retry (10 minutes)
+                            86400      ; expire (1 day)
+                            600        ; minimum (10 minutes)
+                        )
+
+                IN      NS      ns01.dns.lab.
+                IN      NS      ns02.dns.lab.
+
+; DNS Servers
+ns01            IN      A       192.168.56.10
+ns02            IN      A       192.168.56.11
+www            IN      A       192.168.56.15
+www            IN      A       192.168.56.16
+```
