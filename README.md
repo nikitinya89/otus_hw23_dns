@@ -31,6 +31,7 @@ yum install bind bind-utils -y
 ```bash
 /etc/resolv.conf
 
+domain dns.lab
 search dns.lab
 nameserver 192.168.56.10
 nameserver 192.168.56.11
@@ -187,7 +188,7 @@ $ORIGIN 56.168.192.in-addr.arpa.
 zone "newdns.lab" {
     type master;
     allow-transfer { key "zonetransfer.key"; };
-    file "/etc/named/named.newdns.lab"
+    file "/etc/named/named.newdns.lab";
 };
 ```
 ```bash
@@ -212,3 +213,18 @@ ns02            IN      A       192.168.56.11
 www            IN      A       192.168.56.15
 www            IN      A       192.168.56.16
 ```
+Перезапускаем службу _named_:
+```bash
+systemctl restart named
+```
+После этого выполним проверку с клиента:  
+  
+![dig1](img/dig1.jpg)
+
+Имена успешно резолвятся.
+
+Для выполнения этого задания с помощью ansible запустим playbook:
+```bash
+ansible-playbook dns.yml
+```
+### Split-DNS
