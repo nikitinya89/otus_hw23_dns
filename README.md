@@ -223,8 +223,117 @@ systemctl restart named
 
 Имена успешно резолвятся.
 
+---
 Для выполнения этого задания с помощью ansible запустим playbook:
 ```bash
 ansible-playbook dns.yml
 ```
+---
 ### Split-DNS
+Для настройки Split-DNS изменим конфигарционный файл на сервере ns01. Добавим списки доступа для обоих клиентов и **view** соответствующие этим спискам, а также _default view_ для всех остальных:
+```bash
+...
+key "client1-key" {
+        algorithm hmac-md5;
+        secret "kJ5bvgWOW2cOMv8V29v5YA==";
+};
+
+key "client2-key" {
+        algorithm hmac-md5;
+        secret "oyZ48rapZuamKQKtWPSHQA==";
+};
+
+
+// ZONE TRANSFER WITH TSIG
+include "/etc/named.zonetransfer.key";
+server 192.168.56.11 {
+    keys { "zonetransfer.key"; };
+};
+
+acl client1 {!key client2-key; key client1-key; 192.168.56.15;};
+acl client2 {!key client1-key; key client2-key; 192.168.56.16;};
+
+view "client1" {
+    match-clients {client1;};
+
+    // dns.lab zone
+    zone "dns.lab" {
+        type master;
+        file "/etc/named/named.dns.lab.client1";
+        also-notify { 192.168.56.11 key client1-key; };
+    };
+
+    // newdns.lab zone
+    zone "newdns.lab" {
+        type master;
+        file "/etc/named/named.newdns.lab";
+        also-notify { 192.168.56.11 key client1-key; };
+    };
+
+};
+
+view "client2" {
+    match-clients {client2;};
+
+    // dns.lab zone
+    zone "dns.lab" {
+        type master;
+        file "/etc/named/named.dns.lab";
+        also-notify { 192.168.56.11 key client2-key; };
+    };
+};
+
+view "default" {
+    match-clients { any; };
+
+
+    // root zone
+    zone "." IN {
+        type hint;
+        file "named.ca";
+    };
+
+    // zones like localhost
+    include "/etc/named.rfc1912.zones";
+    // root's DNSKEY
+    include "/etc/named.root.key";
+
+    // lab's zone
+    zone "dns.lab" {
+        type master;
+        allow-transfer { key "zonetransfer.key"; };
+        file "/etc/named/named.dns.lab";
+    };
+
+
+    // lab's zone reverse
+    zone "56.168.192.in-addr.arpa" {
+        type master;
+        allow-transfer { key "zonetransfer.key"; };
+        file "/etc/named/named.dns.lab.rev";
+    };
+
+
+    // lab's newdns zone
+    zone "newdns.lab" {
+        type master;
+        allow-transfer { key "zonetransfer.key"; };
+        file "/etc/named/named.newdns.lab";
+    };
+};
+```
+На ns02 настройки идентичные, за исключение того, что необходимо указать тип slave. Мы добавили новый файл для описания зоны **dns.lab** для **client1**. Он идентичен предыдущему, но в соответсвии с заданием в нем отсутствует запись для _web2_. Перезапустим службу _named_ и выполним проверку с клиентов:  
+#### client1  
+![dig2](img/dig2.jpg)  
+
+#### client2  
+![dig3](img/dig3.jpg)  
+
+Как и требовалось в задании, **client1** видит обе зоны, но в зоне _dns.lab_ ему недоступна запись _web2_. **Client2** видит только зону _dns.lab_.  
+
+---
+Для выполнения этого задания с помощью ansible запустим playbook:
+```bash
+ansible-playbook split-dns.yml
+```
+---
