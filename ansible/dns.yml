@@ -1,0 +1,72 @@
+---
+- name: Configure bind dns
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Put SELinux in permissive mode, logging actions that would be blocked.
+      ansible.posix.selinux:
+        policy: targeted
+        state: permissive
+
+    - name: Install packages
+      yum:
+        name:
+          - bind
+          - bind-utils
+          - nano
+        state: latest
+
+    - name: Edit /etc/resolv.conf for servers
+      template:
+        src: resolv.conf.j2
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Copy zonetransferkey
+      copy:
+        src: zonetransfer.key
+        dest: /etc/named.zonetransfer.key
+        owner: root
+        group: named
+        mode: 0644
+#      when: '"dns" in group_names'
+
+    - name: Copy bind config
+      copy:
+        src: "{{ ansible_hostname }}.named.conf"
+        dest: /etc/named.conf
+        owner: root
+        group: named
+        mode: 0640
+      when: '"dns" in group_names'
+
+    - name: Copy dns.lab zone config
+      copy:
+        src: "{{ item }}"
+        dest: "/etc/named/{{ item }}"
+        owner: root
+        group: named
+        mode: 0660
+      with_items:
+        - named.dns.lab
+        - named.dns.lab.rev
+        - named.newdns.lab
+      when: 'ansible_hostname == "ns01"'
+
+    - name: Change permissions to /etc/named
+      file:
+        path: /etc/named
+        owner: root
+        group: named
+        mode: 0670
+      when: '"dns" in group_names'
+
+    - name: Restart named service
+      systemd:
+        name: named
+        state: restarted
+        enabled: yes
+...
