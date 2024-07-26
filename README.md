@@ -224,7 +224,7 @@ systemctl restart named
 Имена успешно резолвятся.
 
 ---
-Для выполнения этого задания с помощью ansible запустим playbook:
+Для выполнения этого задания с помощью **ansible** запустим playbook:
 ```bash
 ansible-playbook dns.yml
 ```
@@ -332,7 +332,7 @@ view "default" {
 Как и требовалось в задании, **client1** видит обе зоны, но в зоне _dns.lab_ ему недоступна запись _web2_. **Client2** видит только зону _dns.lab_.  
 
 ---
-Для выполнения этого задания с помощью ansible запустим playbook:
+Для выполнения этого задания с помощью **ansible** запустим playbook:
 ```bash
 ansible-playbook split-dns.yml
 ```
